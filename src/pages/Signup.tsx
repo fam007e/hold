@@ -4,6 +4,8 @@ import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import './Auth.css';
 
+import { checkPwnedPassword } from '@/lib/pwned';
+
 export function Signup() {
   const { user, signup, error, clearError, loading } = useAuth();
   const [displayName, setDisplayName] = useState('');
@@ -13,6 +15,7 @@ export function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [pwnedWarning, setPwnedWarning] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -25,6 +28,19 @@ export function Signup() {
   if (user) {
     return <Navigate to="/" replace />;
   }
+
+  const handlePasswordBlur = async () => {
+    if (password.length >= 4) {
+      const result = await checkPwnedPassword(password);
+      if (result.isPwned) {
+        setPwnedWarning(`⚠️ This password has been seen in ${result.count.toLocaleString()} data breaches. Please choose a safer one.`);
+      } else {
+        setPwnedWarning(null);
+      }
+    } else {
+      setPwnedWarning(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +55,12 @@ export function Signup() {
     if (password.length < 6) {
       setLocalError('Password must be at least 6 characters');
       return;
+    }
+
+    // Optional: Block if pwned
+    if (pwnedWarning) {
+      // We could block here, but generally just showing the warning is enough for UX.
+      // Let's scroll to it or highlight it.
     }
 
     setIsSubmitting(true);
@@ -103,10 +125,15 @@ export function Signup() {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (pwnedWarning) setPwnedWarning(null); // Clear warning on change
+                }}
+                onBlur={handlePasswordBlur}
                 placeholder="At least 6 characters"
                 required
                 autoComplete="new-password"
+                style={pwnedWarning ? { borderColor: '#eab308' } : {}}
               />
               <button
                 type="button"
@@ -116,6 +143,11 @@ export function Signup() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {pwnedWarning && (
+              <div style={{ color: '#ca8a04', fontSize: '0.8rem', marginTop: '0.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.25rem' }}>
+                {pwnedWarning}
+              </div>
+            )}
           </div>
 
           <div className="auth__field">
