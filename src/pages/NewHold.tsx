@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -37,38 +37,52 @@ const COMMON_RESOLUTION_DAYS = [
   { value: 90, label: '3 months' },
 ];
 
+const DEFAULT_RESOLUTION_DAYS: Record<HoldCategory, number> = {
+  finance: 14,
+  healthcare: 30,
+  government: 45,
+  work: 7,
+  education: 30,
+  personal: 7,
+};
+
 export function NewHold() {
   const navigate = useNavigate();
   const { addHold } = useHolds();
 
-  const [formData, setFormData] = useState({
-    title: '',
-    category: '' as HoldCategory | '',
-    counterparty: '',
-    startDate: new Date().toISOString().split('T')[0],
-    expectedResolutionDays: 14,
-    notes: '',
-  });
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<HoldCategory | ''>('');
+  const [counterparty, setCounterparty] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expectedResolutionDays, setExpectedResolutionDays] = useState(14);
+  const [notes, setNotes] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Auto-update expected days when category changes
+  useEffect(() => {
+    if (category && DEFAULT_RESOLUTION_DAYS[category]) {
+      setExpectedResolutionDays(DEFAULT_RESOLUTION_DAYS[category]);
+    }
+  }, [category]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.title.trim()) {
+    if (!title.trim()) {
       newErrors.title = 'Title is required';
     }
-    if (!formData.category) {
+    if (!category) {
       newErrors.category = 'Please select a category';
     }
-    if (!formData.counterparty.trim()) {
+    if (!counterparty.trim()) {
       newErrors.counterparty = 'Counterparty is required';
     }
-    if (!formData.startDate) {
+    if (!startDate) {
       newErrors.startDate = 'Start date is required';
     }
-    if (formData.expectedResolutionDays < 1) {
+    if (expectedResolutionDays < 1) {
       newErrors.expectedResolutionDays = 'Expected resolution must be at least 1 day';
     }
 
@@ -85,13 +99,13 @@ export function NewHold() {
 
     try {
       const newHold: NewHoldType = {
-        title: formData.title,
-        category: formData.category as HoldCategory,
-        counterparty: formData.counterparty,
-        startDate: new Date(formData.startDate),
-        expectedResolutionDays: formData.expectedResolutionDays,
+        title,
+        category: category as HoldCategory,
+        counterparty,
+        startDate: new Date(startDate),
+        expectedResolutionDays,
         status: 'pending',
-        notes: formData.notes,
+        notes,
       };
 
       const hold = await addHold(newHold);
@@ -120,8 +134,8 @@ export function NewHold() {
             id="title"
             type="text"
             placeholder="e.g., Insurance Refund – Claim #4832"
-            value={formData.title}
-            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            value={title}
+            onChange={e => setTitle(e.target.value)}
             className={errors.title ? 'error' : ''}
           />
           {errors.title && <span className="new-hold__error">{errors.title}</span>}
@@ -134,12 +148,12 @@ export function NewHold() {
               <button
                 key={cat.value}
                 type="button"
-                className={`new-hold__category ${formData.category === cat.value ? 'new-hold__category--active' : ''}`}
+                className={`new-hold__category ${category === cat.value ? 'new-hold__category--active' : ''}`}
                 style={{
                   '--cat-color': cat.color,
                   '--cat-bg': `${cat.color}15`,
                 } as React.CSSProperties}
-                onClick={() => setFormData(prev => ({ ...prev, category: cat.value }))}
+                onClick={() => setCategory(cat.value)}
               >
                 {CATEGORY_ICONS[cat.value]}
                 <span>{cat.label}</span>
@@ -155,8 +169,8 @@ export function NewHold() {
             id="counterparty"
             type="text"
             placeholder="e.g., BlueCross Insurance, IRS, Acme Corp"
-            value={formData.counterparty}
-            onChange={e => setFormData(prev => ({ ...prev, counterparty: e.target.value }))}
+            value={counterparty}
+            onChange={e => setCounterparty(e.target.value)}
             className={errors.counterparty ? 'error' : ''}
           />
           {errors.counterparty && <span className="new-hold__error">{errors.counterparty}</span>}
@@ -168,8 +182,8 @@ export function NewHold() {
             <input
               id="startDate"
               type="date"
-              value={formData.startDate}
-              onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
               className={errors.startDate ? 'error' : ''}
             />
             {errors.startDate && <span className="new-hold__error">{errors.startDate}</span>}
@@ -183,8 +197,8 @@ export function NewHold() {
                 type="number"
                 min="1"
                 max="365"
-                value={formData.expectedResolutionDays}
-                onChange={e => setFormData(prev => ({ ...prev, expectedResolutionDays: parseInt(e.target.value) || 1 }))}
+                value={expectedResolutionDays}
+                onChange={e => setExpectedResolutionDays(parseInt(e.target.value) || 1)}
               />
               <span>days</span>
             </div>
@@ -193,8 +207,8 @@ export function NewHold() {
                 <button
                   key={preset.value}
                   type="button"
-                  className={`new-hold__preset ${formData.expectedResolutionDays === preset.value ? 'new-hold__preset--active' : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, expectedResolutionDays: preset.value }))}
+                  className={`new-hold__preset ${expectedResolutionDays === preset.value ? 'new-hold__preset--active' : ''}`}
+                  onClick={() => setExpectedResolutionDays(preset.value)}
                 >
                   {preset.label}
                 </button>
@@ -208,8 +222,8 @@ export function NewHold() {
           <textarea
             id="notes"
             placeholder="Reference numbers, key details, what you've already tried..."
-            value={formData.notes}
-            onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
             rows={4}
           />
         </div>

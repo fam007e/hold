@@ -1,4 +1,4 @@
-import { differenceInDays, addDays, format, isAfter, isBefore, startOfDay } from 'date-fns';
+import { differenceInDays, addDays, format, isAfter, startOfDay } from 'date-fns';
 import type { Hold, HoldStatus, FollowUpTone } from './types';
 
 /**
@@ -10,7 +10,6 @@ export function calculateUrgency(hold: Hold): number {
 
   const today = startOfDay(new Date());
   const start = startOfDay(new Date(hold.startDate));
-  const expectedEnd = addDays(start, hold.expectedResolutionDays);
 
   const daysElapsed = differenceInDays(today, start);
   const totalDays = hold.expectedResolutionDays;
@@ -23,6 +22,37 @@ export function calculateUrgency(hold: Hold): number {
   }
 
   return Math.round((daysElapsed / totalDays) * 100);
+}
+
+export type RiskLevel = 'Low' | 'Medium' | 'High';
+
+export function calculateRiskScore(hold: Hold): number {
+  if (hold.status === 'resolved') return 0;
+
+  const now = new Date();
+  const start = new Date(hold.startDate);
+  const elapsedDays = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Base score based on progress towards expected date
+  const progressPercent = (elapsedDays / hold.expectedResolutionDays) * 100;
+
+  // If already overdue, max risk
+  if (progressPercent >= 100) return 100;
+
+  let score = progressPercent;
+
+  // Acceleration curve - risk increases faster as we get closer to deadline
+  if (progressPercent > 80) {
+    score += 10; // Jumping into High risk territory
+  }
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+export function getRiskLevel(score: number): RiskLevel {
+  if (score >= 80) return 'High';
+  if (score >= 50) return 'Medium';
+  return 'Low';
 }
 
 /**

@@ -99,7 +99,7 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
     const holdData = {
       ...newHold,
       userId: user.uid,
-      startDate: Timestamp.fromDate(new Date(newHold.startDate)),
+      startDate: Timestamp.fromMillis(new Date(newHold.startDate).getTime()),
       attachments: [],
       followUps: [],
       createdAt: serverTimestamp(),

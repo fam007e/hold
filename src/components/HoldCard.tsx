@@ -7,9 +7,11 @@ import {
   GraduationCap,
   User,
   ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Hold, HoldCategory } from '@/lib/types';
 import { CATEGORY_INFO } from '@/lib/types';
+import { calculateRiskScore, getRiskLevel } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { Timeline } from './Timeline';
 import './HoldCard.css';
@@ -29,6 +31,9 @@ interface HoldCardProps {
 
 export function HoldCard({ hold }: HoldCardProps) {
   const categoryInfo = CATEGORY_INFO[hold.category];
+  const riskScore = calculateRiskScore(hold);
+  const riskLevel = getRiskLevel(riskScore);
+  const showRisk = riskLevel === 'High' && hold.status === 'pending';
 
   return (
     <Link to={`/hold/${hold.id}`} className="hold-card">
@@ -41,6 +46,12 @@ export function HoldCard({ hold }: HoldCardProps) {
         </div>
         <div className="hold-card__meta">
           <span className="hold-card__category">{categoryInfo.label}</span>
+          {showRisk && (
+            <div className="hold-card__risk" title={`High Risk Score: ${riskScore}`}>
+              <AlertTriangle size={14} />
+              <span>Risk</span>
+            </div>
+          )}
           <StatusBadge status={hold.status} size="sm" />
         </div>
         <ChevronRight className="hold-card__arrow" size={20} />
