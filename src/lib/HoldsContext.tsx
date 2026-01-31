@@ -1,70 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from './firebase';
+import { useAuth } from './AuthContext';
 import type { Hold, NewHold, HoldStatus } from './types';
-import { shouldBeOverdue } from './utils';
-
-// Demo data for development
-const DEMO_HOLDS: Hold[] = [
-  {
-    id: '1',
-    userId: 'demo',
-    title: 'Insurance Refund – Claim #4832',
-    category: 'finance',
-    counterparty: 'BlueCross Insurance',
-    startDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
-    expectedResolutionDays: 14,
-    status: 'pending',
-    notes: 'Submitted claim for dental procedure. Expected $450 refund.',
-    attachments: [],
-    followUps: [],
-    createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '2',
-    userId: 'demo',
-    title: 'Passport Renewal Application',
-    category: 'government',
-    counterparty: 'US Department of State',
-    startDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    expectedResolutionDays: 42,
-    status: 'overdue',
-    notes: 'Expedited processing requested. Reference: APP-2024-88432',
-    attachments: [],
-    followUps: [],
-    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '3',
-    userId: 'demo',
-    title: 'Freelance Invoice #1089',
-    category: 'work',
-    counterparty: 'Acme Corp',
-    startDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    expectedResolutionDays: 30,
-    status: 'pending',
-    notes: 'Net 30 payment terms. Invoice for December work.',
-    attachments: [],
-    followUps: [],
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '4',
-    userId: 'demo',
-    title: 'Medical Records Request',
-    category: 'healthcare',
-    counterparty: 'City Hospital',
-    startDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-    expectedResolutionDays: 10,
-    status: 'pending',
-    notes: 'Requested complete medical history for new doctor.',
-    attachments: [],
-    followUps: [],
-    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-  },
-];
 
 interface HoldsContextType {
   holds: Hold[];
@@ -80,55 +30,106 @@ interface HoldsContextType {
 
 const HoldsContext = createContext<HoldsContextType | undefined>(undefined);
 
+// Convert Firestore document to Hold type
+function docToHold(id: string, data: any): Hold {
+  return {
+    id,
+    userId: data.userId,
+    title: data.title,
+    category: data.category,
+    counterparty: data.counterparty,
+    startDate: data.startDate instanceof Timestamp ? data.startDate.toDate() : new Date(data.startDate),
+    expectedResolutionDays: data.expectedResolutionDays,
+    status: data.status,
+    notes: data.notes || '',
+    attachments: data.attachments || [],
+    followUps: data.followUps || [],
+    resolution: data.resolution ? {
+      ...data.resolution,
+      date: data.resolution.date instanceof Timestamp ? data.resolution.date.toDate() : new Date(data.resolution.date),
+    } : undefined,
+    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+  };
+}
+
 export function HoldsProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [holds, setHolds] = useState<Hold[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load demo data on mount
+  // Subscribe to holds for current user
   useEffect(() => {
-    // Simulate loading and check for overdue items
-    const timer = setTimeout(() => {
-      const updatedHolds = DEMO_HOLDS.map(hold => {
-        if (shouldBeOverdue(hold) && hold.status === 'pending') {
-          return { ...hold, status: 'overdue' as const };
-        }
-        return hold;
-      });
-      setHolds(updatedHolds);
+    if (!user) {
+      setHolds([]);
       setLoading(false);
-    }, 500);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, []);
+    setLoading(true);
+
+    const q = query(
+      collection(db, 'holds'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const holdsData = snapshot.docs.map(doc => docToHold(doc.id, doc.data()));
+        setHolds(holdsData);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('Error fetching holds:', err);
+        setError('Failed to load holds');
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [user]);
 
   const addHold = useCallback(async (newHold: NewHold): Promise<Hold> => {
-    const hold: Hold = {
+    if (!user) throw new Error('Must be logged in');
+
+    const holdData = {
       ...newHold,
-      id: crypto.randomUUID(),
-      userId: 'demo',
+      userId: user.uid,
+      startDate: Timestamp.fromDate(new Date(newHold.startDate)),
+      attachments: [],
+      followUps: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(collection(db, 'holds'), holdData);
+
+    return {
+      ...newHold,
+      id: docRef.id,
+      userId: user.uid,
       attachments: [],
       followUps: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-
-    setHolds(prev => [hold, ...prev]);
-    return hold;
-  }, []);
+  }, [user]);
 
   const updateHold = useCallback(async (id: string, updates: Partial<Hold>) => {
-    setHolds(prev =>
-      prev.map(hold =>
-        hold.id === id
-          ? { ...hold, ...updates, updatedAt: new Date() }
-          : hold
-      )
-    );
+    const docRef = doc(db, 'holds', id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
   }, []);
 
   const deleteHold = useCallback(async (id: string) => {
-    setHolds(prev => prev.filter(hold => hold.id !== id));
+    const docRef = doc(db, 'holds', id);
+    await deleteDoc(docRef);
   }, []);
 
   const updateStatus = useCallback(async (id: string, status: HoldStatus) => {
