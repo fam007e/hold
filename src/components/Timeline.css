@@ -1,0 +1,123 @@
+.timeline {
+  width: 100%;
+}
+
+.timeline--compact {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.timeline--compact .timeline__bar {
+  flex: 1;
+  height: 0.375rem;
+  background: var(--color-surface-elevated);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.timeline--compact .timeline__progress {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.timeline--compact .timeline__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Full timeline */
+.timeline__header {
+  margin-bottom: 0.75rem;
+}
+
+.timeline__days-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.timeline__track {
+  position: relative;
+}
+
+.timeline__bar--full {
+  position: relative;
+  height: 0.5rem;
+  background: var(--color-surface-elevated);
+  border-radius: 9999px;
+  overflow: visible;
+}
+
+.timeline__bar--full .timeline__progress {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.timeline__milestone {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  transform: translateX(-50%);
+}
+
+.timeline__milestone--start {
+  left: 0;
+  transform: none;
+  align-items: flex-start;
+}
+
+.timeline__milestone--end {
+  left: 100%;
+  transform: translateX(-100%);
+  align-items: flex-end;
+}
+
+.timeline__milestone--resolved {
+  align-items: center;
+}
+
+.timeline__milestone-dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  background: var(--color-surface);
+  border: 3px solid var(--color-text-secondary);
+  border-radius: 50%;
+  position: relative;
+  top: -0.1875rem;
+}
+
+.timeline__milestone--start .timeline__milestone-dot {
+  border-color: #10b981;
+  background: #10b981;
+}
+
+.timeline__milestone--end .timeline__milestone-dot {
+  border-color: var(--milestone-color, var(--color-text-secondary));
+}
+
+.timeline__milestone-dot--resolved {
+  border-color: #10b981 !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+.timeline__milestone-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin-top: 0.5rem;
+}
+
+.timeline__milestone-date {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}

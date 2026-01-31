@@ -1,0 +1,76 @@
+.hold-card {
+  display: block;
+  background: var(--color-surface);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.hold-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.hold-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.hold-card__icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hold-card__meta {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hold-card__category {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.hold-card__arrow {
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.hold-card:hover .hold-card__arrow {
+  transform: translateX(4px);
+  color: var(--color-primary);
+}
+
+.hold-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 0.25rem;
+  line-height: 1.4;
+}
+
+.hold-card__counterparty {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 1rem;
+}
+
+.hold-card__timeline {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
