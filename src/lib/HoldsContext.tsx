@@ -151,11 +151,12 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       startDate: Timestamp.fromMillis(new Date(newHold.startDate).getTime()),
       expectedResolutionDays: newHold.expectedResolutionDays,
       status: 'pending',
-      attachments: [],
+      attachments: newHold.attachments || [],
       followUps: [],
     };
 
     // Data to be signed (includes encrypted values)
+    // Note: We authenticate the attachments metadata too (important!)
     const dataToSign = {
       ...baseData,
       title: encryptedTitle,

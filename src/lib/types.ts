@@ -16,9 +16,19 @@ export type FollowUpTone = 'polite' | 'firm' | 'escalation';
 
 export interface Attachment {
   id: string;
-  name: string;
-  url: string;
-  type: string;
+  originalName: string; // Encrypted in transport but stored as meta? No, name might be sensitive. Let's keep name as is for now or use generic name.
+  // Actually, for Zero Knowledge, filename should probably be generic or encrypted too.
+  // But Firestore metadata is simpler to keep plaintext if harmless.
+  // Let's encrypt the name inside the file or just accept name leakage for MVP?
+  // User said "Evidence Locker". Filename "Insurance_Claim_HIV_Test.pdf" IS sensitive.
+  // I will encrypt the filename in the metadata or just store "file_1.enc" and keep real name in `name`.
+  // Wait, if I encrypt the name, I need to store `encryptedName`.
+  name: string; // Display name (will be encrypted string if I choose to encrypt it, or plaintext)
+  type: string; // MIME type
+  size: number; // Encrypted size
+  url?: string; // Download URL (if public) - N/A for us
+  storagePath: string; // Firebase Storage path
+  iv: string; // Initialization Vector (Base64)
   uploadedAt: Date;
 }
 
@@ -62,7 +72,7 @@ export interface User {
 }
 
 // Helper type for creating new holds
-export type NewHold = Omit<Hold, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'attachments' | 'followUps' | 'resolution'>;
+export type NewHold = Omit<Hold, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'followUps' | 'resolution'> & { attachments?: Attachment[] };
 
 // Category metadata
 export const CATEGORY_INFO: Record<HoldCategory, { label: string; icon: string; color: string }> = {

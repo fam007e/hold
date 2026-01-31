@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 import { useHolds } from '@/lib/HoldsContext';
 import { StatusBadge, Timeline, FollowUpGenerator } from '@/components';
-import { CATEGORY_INFO, type HoldCategory } from '@/lib/types';
+import { CATEGORY_INFO, type HoldCategory, type Attachment } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { useAuth } from '@/lib/AuthContext';
+import { downloadAttachment } from '@/lib/storage';
 import { useState } from 'react';
 import './HoldDetail.css';
 
@@ -32,8 +34,34 @@ export function HoldDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getHold, deleteHold, resolveHold, updateStatus } = useHolds();
+  const { encryptionKey } = useAuth();
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolution, setResolution] = useState({ outcome: '', notes: '' });
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (attachment: Attachment) => {
+    if (!encryptionKey) {
+      alert('Vault locked. Cannot decrypt file.');
+      return;
+    }
+    setDownloadingId(attachment.id);
+    try {
+      const url = await downloadAttachment(attachment, encryptionKey);
+      // Create temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.originalName || attachment.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // Cleanup after download triggers
+    } catch (err) {
+      console.error('Download failed', err);
+      alert('Failed to decrypt and download file.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const hold = getHold(id!);
 
@@ -150,8 +178,36 @@ export function HoldDetail() {
             <div className="hold-detail__info">
               <span className="hold-detail__info-label">Attachments</span>
               <span className="hold-detail__info-value">
-                <Paperclip size={14} />
-                {hold.attachments.length}
+                {hold.attachments && hold.attachments.length > 0 ? (
+                  <div className="hold-detail__attachment-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {hold.attachments.map(att => (
+                      <button
+                        key={att.id}
+                        onClick={() => handleDownload(att)}
+                        disabled={downloadingId === att.id}
+                        className="hold-detail__attachment-btn"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          background: '#f3f4f6',
+                          border: '1px solid #e5e7eb',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          color: '#374151'
+                        }}
+                      >
+                        <Paperclip size={14} />
+                        <span style={{ textDecoration: 'underline' }}>{att.originalName}</span>
+                        {downloadingId === att.id && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>(Decrypting...)</span>}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span style={{ color: '#9ca3af' }}>None</span>
+                )}
               </span>
             </div>
           </div>

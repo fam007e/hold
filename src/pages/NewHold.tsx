@@ -9,9 +9,14 @@ import {
   Briefcase,
   GraduationCap,
   User,
+  Paperclip,
+  FileText,
+  X,
 } from 'lucide-react';
 import { useHolds } from '@/lib/HoldsContext';
-import { CATEGORY_INFO, type HoldCategory, type NewHold as NewHoldType } from '@/lib/types';
+import { useAuth } from '@/lib/AuthContext';
+import { uploadAttachment } from '@/lib/storage';
+import { CATEGORY_INFO, type HoldCategory, type NewHold as NewHoldType, type Attachment } from '@/lib/types';
 import './NewHold.css';
 
 const CATEGORY_ICONS: Record<HoldCategory, React.ReactNode> = {
@@ -60,6 +65,50 @@ export function NewHold() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // File Upload State
+  const { user, encryptionKey } = useAuth();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [draftId] = useState(() => crypto.randomUUID()); // Stable draft ID for this session
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('File must be smaller than 10MB');
+      return;
+    }
+
+    if (!user || !encryptionKey) {
+      setUploadError('You must be logged in and vault unlocked to upload files.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      // Upload using the draft ID as the hold container for now
+      // This is safe because storage path is just a convention.
+      const attachment = await uploadAttachment(file, draftId, user, encryptionKey);
+      setAttachments(prev => [...prev, attachment]);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      setUploadError('Failed to encrypt and upload file. Please try again.');
+    } finally {
+      setUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+    // Note: We leave the encrypted file in storage for now (orphaned) to keep client simple.
+  };
+
   // Auto-update expected days when category changes
   useEffect(() => {
     if (category && DEFAULT_RESOLUTION_DAYS[category]) {
@@ -106,6 +155,7 @@ export function NewHold() {
         expectedResolutionDays,
         status: 'pending',
         notes,
+        attachments,
       };
 
       const hold = await addHold(newHold);
@@ -228,10 +278,43 @@ export function NewHold() {
           />
         </div>
 
+        {/* Evidence Locker */}
+        <div className="new-hold__field">
+          <label>Evidence Locker (Encrypted)</label>
+          <div className="new-hold__evidence">
+            <div className="new-hold__file-list">
+              {attachments.map(att => (
+                <div key={att.id} className="new-hold__file-item">
+                  <FileText size={16} />
+                  <span className="new-hold__file-name">{att.originalName}</span>
+                  <button type="button" onClick={() => removeAttachment(att.id)} className="new-hold__file-remove">
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="new-hold__upload-row">
+              <label className={`new-hold__upload-btn ${uploading ? 'disabled' : ''}`}>
+                <Paperclip size={18} />
+                <span>{uploading ? 'Encrypting & Uploading...' : 'Attach Evidence'}</span>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <span className="new-hold__upload-hint">Files are encrypted <b>before</b> upload. Max 10MB.</span>
+            </div>
+            {uploadError && <p className="new-hold__error">{uploadError}</p>}
+          </div>
+        </div>
+
         <button
           type="submit"
           className="new-hold__submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || uploading}
         >
           <Plus size={20} />
           {isSubmitting ? 'Creating...' : 'Create Hold'}

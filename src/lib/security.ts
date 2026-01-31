@@ -108,8 +108,15 @@ export async function deriveSigningKey(password: string, uid: string): Promise<C
  * Encrypt a string value
  */
 export async function encryptValue(text: string, key: CryptoKey): Promise<EncryptedData> {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
   const encoded = str2ab(text);
+  return encryptBuffer(encoded, key);
+}
+
+/**
+ * Encrypt a buffer (binary data)
+ */
+export async function encryptBuffer(data: any, key: CryptoKey): Promise<EncryptedData> {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
 
   const ciphertext = await window.crypto.subtle.encrypt(
     {
@@ -117,7 +124,7 @@ export async function encryptValue(text: string, key: CryptoKey): Promise<Encryp
       iv: iv as any,
     },
     key,
-    encoded as any
+    data as any
   );
 
   return {
@@ -130,6 +137,14 @@ export async function encryptValue(text: string, key: CryptoKey): Promise<Encryp
  * Decrypt a string value
  */
 export async function decryptValue(data: EncryptedData, key: CryptoKey): Promise<string> {
+  const decrypted = await decryptBuffer(data, key);
+  return ab2str(decrypted);
+}
+
+/**
+ * Decrypt a buffer (binary data)
+ */
+export async function decryptBuffer(data: EncryptedData, key: CryptoKey): Promise<ArrayBuffer> {
   try {
     const ciphertext = base642ab(data.ciphertext);
     const iv = base642ab(data.iv);
@@ -143,10 +158,10 @@ export async function decryptValue(data: EncryptedData, key: CryptoKey): Promise
       ciphertext as any
     );
 
-    return ab2str(decrypted);
+    return decrypted;
   } catch (e) {
     console.error("Decryption failed:", e);
-    return "[Encrypted Data]"; // Fail safe
+    throw new Error("Failed to decrypt data");
   }
 }
 
