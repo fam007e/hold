@@ -10,13 +10,19 @@ import {
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
+import { deriveKey, deriveSigningKey } from './security';
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
+  encryptionKey: CryptoKey | null;
+  signingKey: CryptoKey | null;
+  isLocked: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  unlock: (password: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -26,20 +32,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+  const [signingKey, setSigningKey] = useState<CryptoKey | null>(null);
+
+  // If user is present but keys are missing, the vault is locked
+  const isLocked = !!user && !encryptionKey;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      // If user logs out or session changes, keys are processed here
+      // But since keys are memory-only, they persist until reload or explicit clear
+      if (!user) {
+        setEncryptionKey(null);
+        setSigningKey(null);
+      }
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
+  const deriveKeys = async (password: string, uid: string) => {
+    const encKey = await deriveKey(password, uid);
+    const signKey = await deriveSigningKey(password, uid);
+    setEncryptionKey(encKey);
+    setSigningKey(signKey);
+  };
+
   const login = async (email: string, password: string) => {
     try {
       setError(null);
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      await deriveKeys(password, user.uid);
     } catch (err: any) {
       const message = getErrorMessage(err.code);
       setError(message);
@@ -51,6 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Derive keys immediately
+      await deriveKeys(password, user.uid);
 
       // Update profile with display name
       await updateProfile(user, { displayName });
@@ -68,10 +96,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const unlock = async (password: string) => {
+    if (!user) throw new Error('No user to unlock');
+    try {
+      setError(null);
+      // Re-authenticate to verify password is correct (optional but good practice)
+      // Actually, we just need to try deriving keys. But we should ideally verify against logic.
+      // Easiest is to re-login, which also refreshes token.
+      // But re-login requires email. user.email might be null?
+      if (!user.email) throw new Error('User email missing');
+
+      await signInWithEmailAndPassword(auth, user.email, password);
+      await deriveKeys(password, user.uid);
+    } catch (err: any) {
+      setError('Incorrect password');
+      throw err;
+    }
+  };
+
   const logout = async () => {
     try {
       setError(null);
       await signOut(auth);
+      setEncryptionKey(null);
+      setSigningKey(null);
     } catch (err: any) {
       setError('Failed to log out');
       throw err;
@@ -82,7 +130,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, signup, logout, clearError }}
+      value={{
+        user,
+        loading,
+        error,
+        encryptionKey,
+        signingKey,
+        isLocked,
+        login,
+        signup,
+        logout,
+        unlock,
+        clearError
+      }}
     >
       {children}
     </AuthContext.Provider>

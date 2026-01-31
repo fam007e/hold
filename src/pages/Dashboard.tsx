@@ -1,13 +1,33 @@
-import { Clock, AlertTriangle, CheckCircle, ArrowUpCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, AlertTriangle, CheckCircle, ArrowUpCircle, Lock, Unlock } from 'lucide-react';
 import { useHolds } from '@/lib/HoldsContext';
+import { useAuth } from '@/lib/AuthContext'; // Import useAuth
 import { HoldCard } from '@/components';
 import { calculateUrgency } from '@/lib/utils';
 import './Dashboard.css';
 
 export function Dashboard() {
   const { holds, loading } = useHolds();
+  const { isLocked, unlock } = useAuth(); // Get lock state and unlock function
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
 
-  if (loading) {
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      await unlock(unlockPassword);
+      setUnlockPassword('');
+    } catch (err: any) {
+      setUnlockError('Incorrect password');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  if (loading && !isLocked) {
     return (
       <div className="dashboard">
         <div className="dashboard__loading">
@@ -42,6 +62,59 @@ export function Dashboard() {
           }
         </p>
       </header>
+
+      {/* Unlock Vault UI */}
+      {isLocked && (
+        <div className="dashboard__locked-banner" style={{
+          background: '#fee2e2',
+          border: '1px solid #ef4444',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginBottom: '2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b' }}>
+            <Lock size={20} />
+            <span style={{ fontWeight: 600 }}>Vault Locked</span>
+            <span style={{ fontSize: '0.9rem' }}> - Re-enter password to decrypt your data</span>
+          </div>
+
+          <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="password"
+              placeholder="Enter password to unlock"
+              value={unlockPassword}
+              onChange={(e) => setUnlockPassword(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '4px',
+                border: '1px solid #d1d5db',
+                flex: 1
+              }}
+            />
+            <button
+              type="submit"
+              disabled={unlocking}
+              style={{
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                cursor: unlocking ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {unlocking ? 'Unlocking...' : <><Unlock size={16} /> Unlock</>}
+            </button>
+          </form>
+          {unlockError && <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: 0 }}>{unlockError}</p>}
+        </div>
+      )}
 
       <div className="dashboard__stats">
         <div className="dashboard__stat dashboard__stat--pending">
