@@ -95,7 +95,7 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
     let startDate = data.startDate instanceof Timestamp ? data.startDate.toDate() : (data.startDate ? new Date(data.startDate) : new Date());
     let expectedResolutionDays = data.expectedResolutionDays;
     let createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
-    let updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : new Date());
+    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
     if (encryptionKey && !isTampered) {
       try {

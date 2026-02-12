@@ -22,7 +22,7 @@ export function Dashboard() {
     try {
       await unlock(unlockPassword);
       setUnlockPassword('');
-    } catch (err: any) {
+    } catch {
       setUnlockError('Incorrect password');
     } finally {
       setUnlocking(false);
@@ -45,7 +45,7 @@ export function Dashboard() {
         if (Array.isArray(importedData)) {
           alert("Data imported successfully! In a full implementation, this would merge with your existing vault.");
         }
-      } catch (err) {
+      } catch {
         alert("Invalid backup file.");
       }
     };
