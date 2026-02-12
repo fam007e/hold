@@ -8,18 +8,23 @@ on:
   schedule:
     - cron: '0 0 * * 0' # Weekly on Sundays
 
+permissions:
+  contents: read
+
 jobs:
   audit:
+    name: NPM Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run npm audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev

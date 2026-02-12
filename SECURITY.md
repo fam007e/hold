@@ -13,7 +13,7 @@ HOLD is designed with a **Zero Knowledge Architecture**. This means:
 We take security seriously. If you discover a security vulnerability within this project, please report it via the following process:
 
 1. **Do not** open a public GitHub issue for security vulnerabilities.
-2. Email the maintainers at security@example.com (replace with real email) with a detailed description of the issue.
+2. Email the maintainers at this [email](mailto:faisalmoshiur+holdapp@gmail.com) with a detailed description of the issue.
 3. We will acknowledge your report within 48 hours and coordinate a fix.
 
 ## Security Practices
