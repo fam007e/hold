@@ -12,11 +12,13 @@ import {
   Paperclip,
   FileText,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { useHolds } from '@/lib/HoldsContext';
 import { useAuth } from '@/lib/AuthContext';
 import { uploadAttachment } from '@/lib/storage';
 import { CATEGORY_INFO, type HoldCategory, type NewHold as NewHoldType, type Attachment } from '@/lib/types';
+import { EmailParser } from '@/components';
 import './NewHold.css';
 
 const CATEGORY_ICONS: Record<HoldCategory, React.ReactNode> = {
@@ -61,6 +63,10 @@ export function NewHold() {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [expectedResolutionDays, setExpectedResolutionDays] = useState(14);
   const [notes, setNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+
+  const [showEmailParser, setShowEmailParser] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,6 +145,14 @@ export function NewHold() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleEmailParsed = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.counterparty) setCounterparty(data.counterparty);
+    if (data.date) setStartDate(data.date.toISOString().split('T')[0]);
+    if (data.category) setCategory(data.category);
+    setShowEmailParser(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -156,6 +170,8 @@ export function NewHold() {
         status: 'pending',
         notes,
         attachments,
+        isRecurring,
+        recurrenceInterval: isRecurring ? recurrenceInterval : undefined,
       };
 
       const hold = await addHold(newHold);
@@ -175,7 +191,23 @@ export function NewHold() {
           <span>Cancel</span>
         </Link>
         <h1>Create New Hold</h1>
+
+        <button
+          type="button"
+          className="new-hold__magic-btn"
+          onClick={() => setShowEmailParser(true)}
+        >
+          <Sparkles size={18} />
+          <span>Magic Fill from Email</span>
+        </button>
       </header>
+
+      {showEmailParser && (
+        <EmailParser
+          onParsed={handleEmailParsed}
+          onClose={() => setShowEmailParser(false)}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="new-hold__form">
         <div className="new-hold__field">
@@ -277,6 +309,36 @@ export function NewHold() {
             rows={4}
           />
         </div>
+
+        <div className="new-hold__field new-hold__field--checkbox">
+          <label className="checkbox-container">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={e => setIsRecurring(e.target.checked)}
+            />
+            <span className="checkmark"></span>
+            Recurring Hold (Auto-repeat on completion)
+          </label>
+        </div>
+
+        {isRecurring && (
+          <div className="new-hold__field">
+            <label>Repeat Every</label>
+            <div className="new-hold__presets">
+              {(['monthly', 'quarterly', 'yearly'] as const).map(interval => (
+                <button
+                  key={interval}
+                  type="button"
+                  className={`new-hold__preset ${recurrenceInterval === interval ? 'new-hold__preset--active' : ''}`}
+                  onClick={() => setRecurrenceInterval(interval)}
+                >
+                  {interval.charAt(0).toUpperCase() + interval.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Evidence Locker */}
         <div className="new-hold__field">

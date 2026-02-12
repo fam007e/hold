@@ -1,0 +1,145 @@
+.email-parser-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.email-parser {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.email-parser__header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.email-parser__title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.email-parser__title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.email-parser__close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.email-parser__close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.email-parser__hint {
+  padding: 1rem 1.25rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.5;
+  background: #f8fafc;
+}
+
+.email-parser__textarea {
+  flex: 1;
+  width: 100%;
+  padding: 1.25rem;
+  border: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+.email-parser__textarea:focus {
+  outline: none;
+}
+
+.email-parser__footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.email-parser__cancel {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.email-parser__cancel:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.email-parser__submit {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  background: #7c3aed;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.email-parser__submit:hover {
+  background: #6d28d9;
+  transform: translateY(-1px);
+}
+
+.email-parser__submit:active {
+  transform: translateY(0);
+}
+
+.email-parser__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.email-parser__submit.loading {
+  background: #a78bfa;
+}

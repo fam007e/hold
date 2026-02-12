@@ -8,6 +8,7 @@ import {
   User,
   ChevronRight,
   AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 import type { Hold, HoldCategory } from '@/lib/types';
 import { CATEGORY_INFO } from '@/lib/types';
@@ -34,9 +35,10 @@ export function HoldCard({ hold }: HoldCardProps) {
   const riskScore = calculateRiskScore(hold);
   const riskLevel = getRiskLevel(riskScore);
   const showRisk = riskLevel === 'High' && hold.status === 'pending';
+  const isTampered = hold._isTampered;
 
   return (
-    <Link to={`/hold/${hold.id}`} className="hold-card">
+    <Link to={`/hold/${hold.id}`} className={`hold-card ${isTampered ? 'hold-card--tampered' : ''}`}>
       <div className="hold-card__header">
         <div
           className="hold-card__icon"
@@ -46,7 +48,15 @@ export function HoldCard({ hold }: HoldCardProps) {
         </div>
         <div className="hold-card__meta">
           <span className="hold-card__category">{categoryInfo.label}</span>
-          {showRisk && (
+
+          {isTampered && (
+            <div className="hold-card__tampered" title="Security Alert: Data integrity verification failed">
+              <ShieldAlert size={14} color="#ef4444" />
+              <span style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>TAMPERED</span>
+            </div>
+          )}
+
+          {showRisk && !isTampered && (
             <div className="hold-card__risk" title={`High Risk Score: ${riskScore}`}>
               <AlertTriangle size={14} />
               <span>Risk</span>

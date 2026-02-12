@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { Plus, LayoutDashboard, LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { HoldsProvider } from '@/lib/HoldsContext';
+import { NotificationProvider } from '@/lib/NotificationContext';
+import { useOverdueCheck } from '@/hooks/useOverdueCheck';
 import { Dashboard, HoldDetail, NewHold, Login, Signup } from '@/pages';
 import './App.css';
 
@@ -71,7 +73,11 @@ function Navigation() {
   );
 }
 
+
 function AppRoutes() {
+  // Activate background overdue check
+  useOverdueCheck();
+
   return (
     <div className="app-layout">
       <Navigation />
@@ -107,9 +113,11 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <HoldsProvider>
-          <AppRoutes />
-        </HoldsProvider>
+        <NotificationProvider>
+          <HoldsProvider>
+            <AppRoutes />
+          </HoldsProvider>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

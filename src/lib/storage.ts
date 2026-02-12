@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL, getBytes } from 'firebase/storage';
+import { ref, uploadBytes, getBytes } from 'firebase/storage';
 import { storage } from './firebase';
 import { encryptBuffer, decryptBuffer } from './security';
 import { Attachment } from './types';

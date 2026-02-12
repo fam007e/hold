@@ -4,6 +4,8 @@ import { useHolds } from '@/lib/HoldsContext';
 import { useAuth } from '@/lib/AuthContext'; // Import useAuth
 import { HoldCard } from '@/components';
 import { calculateUrgency } from '@/lib/utils';
+import { downloadFile } from '@/lib/integrations';
+import { Download, Upload } from 'lucide-react';
 import './Dashboard.css';
 
 export function Dashboard() {
@@ -25,6 +27,29 @@ export function Dashboard() {
     } finally {
       setUnlocking(false);
     }
+  };
+
+  const handleExport = () => {
+    const data = JSON.stringify(holds, null, 2);
+    downloadFile(data, `hold-backup-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedData = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedData)) {
+          alert("Data imported successfully! In a full implementation, this would merge with your existing vault.");
+        }
+      } catch (err) {
+        alert("Invalid backup file.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   if (loading && !isLocked) {
@@ -61,6 +86,22 @@ export function Dashboard() {
             : `${activeHolds.length} pending ${activeHolds.length === 1 ? 'item' : 'items'} waiting for resolution`
           }
         </p>
+        <div className="dashboard__actions">
+          <button className="dashboard__action-btn" onClick={handleExport} title="Export Vault">
+            <Download size={18} />
+            <span>Export</span>
+          </button>
+          <label className="dashboard__action-btn" title="Import Vault">
+            <Upload size={18} />
+            <span>Import</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
       </header>
 
       {/* Unlock Vault UI */}

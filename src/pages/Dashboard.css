@@ -117,6 +117,34 @@
   gap: 1rem;
 }
 
+
+.dashboard__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.dashboard__action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard__action-btn:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 @media (max-width: 640px) {
   .dashboard {
     padding: 1.5rem 1rem;
@@ -128,5 +156,9 @@
 
   .dashboard__title {
     font-size: 1.5rem;
+  }
+
+  .dashboard__actions {
+    justify-content: center;
   }
 }

@@ -1,5 +1,89 @@
 import { differenceInDays, addDays, format, isAfter, startOfDay } from 'date-fns';
-import type { Hold, HoldStatus, FollowUpTone } from './types';
+import type { Hold, HoldStatus, FollowUpTone, IndustryBenchmark } from './types';
+
+// --- Static Data for Leverage Engine (Zero Knowledge) ---
+// stored locally to avoid server queries
+
+const BENCHMARKS: Record<string, IndustryBenchmark> = {
+  finance: {
+    category: 'finance',
+    averageDays: 14,
+    legalDeadline: 60, // FCBA
+    regulation: 'Fair Credit Billing Act (FCBA)',
+    description: 'Most disputed charges must be acknowledged within 30 days and resolved within two billing cycles (max 90 days).'
+  },
+  healthcare: {
+    category: 'healthcare',
+    averageDays: 30,
+    legalDeadline: 60, // HIPAA / ACA appeal limits often 30-60
+    regulation: 'HIPAA & ACA Appeal Rights',
+    description: 'Insurers generally have 30 days (pre-service) or 60 days (post-service) to decide on a claim appeal.'
+  },
+  government: {
+    category: 'government',
+    averageDays: 45,
+    regulation: 'Freedom of Information Act (FOIA) / Agency Guidelines',
+    description: 'Federal agencies have 20 working days to respond to FOIA requests, though complex requests take longer.'
+  },
+  work: {
+    category: 'work',
+    averageDays: 7,
+    description: 'Internal corporate requests (HR/IT) typically have SLAs of 24-48 hours for high priority, up to 1 week for standard.'
+  },
+  education: {
+    category: 'education',
+    averageDays: 14,
+    regulation: 'FERPA',
+    description: 'Schools must provide access to education records within 45 days of a request.'
+  },
+  personal: {
+    category: 'personal',
+    averageDays: 7,
+    description: 'General personal matters typically resolve within a week.'
+  }
+};
+
+const ESCALATION_PATHS: Record<string, string[]> = {
+  finance: [
+    'File a complaint with the Consumer Financial Protection Bureau (CFPB)',
+    'Contact your State Attorney General',
+    'Submit a dispute with the credit reporting agencies'
+  ],
+  healthcare: [
+    'File an appeal with the insurance company',
+    'Contact your State Insurance Commissioner',
+    'File a complaint with HHS (for HIPAA violations)'
+  ],
+  government: [
+    'Contact the Agency\'s FOIA Public Liaison',
+    'Reach out to your Congressional Representative for casework help',
+    'File an appeal with the agency head'
+  ],
+  work: [
+    'Escalate to the Department Manager',
+    'Contact HR (People Ops) or Ethics Hotline',
+    'Consult local labor board (if statutory violation)'
+  ],
+  education: [
+    'Contact the Department Chair or Dean',
+    'File a formal grievance with the Student Affairs office',
+    'Contact the U.S. Department of Education (Family Policy Compliance Office)'
+  ],
+  personal: [
+    'Request to speak with a supervisor',
+    'Post a public review (Social Media/BBB)',
+    'Consider small claims court'
+  ]
+};
+
+export function getBenchmark(category: string): IndustryBenchmark {
+  return BENCHMARKS[category] || BENCHMARKS.personal;
+}
+
+export function getEscalationSteps(category: string): string[] {
+  return ESCALATION_PATHS[category] || ESCALATION_PATHS.personal;
+}
+// --- End Static Data ---
 
 /**
  * Calculate the urgency level of a hold (0-100)
@@ -107,42 +191,66 @@ export function formatDaysRelative(days: number): string {
   return `${Math.abs(days)} days ago`;
 }
 
-/**
- * Generate follow-up message based on tone
- */
-export function generateFollowUpMessage(hold: Hold, tone: FollowUpTone): string {
-  const daysWaiting = differenceInDays(new Date(), new Date(hold.startDate));
+interface FollowUpContent {
+  subject: string;
+  body: string;
+}
 
+/**
+ * Generate structured follow-up content based on tone and category
+ */
+export function generateFollowUpContent(hold: Hold, tone: FollowUpTone): FollowUpContent {
+  const daysWaiting = differenceInDays(new Date(), new Date(hold.startDate));
+  const dateStr = formatDate(hold.startDate);
+
+  // Category-specific context
+  const contextMap: Record<string, string> = {
+    finance: `regarding the financial transaction for "${hold.title}"`,
+    healthcare: `regarding the medical record/claim "${hold.title}"`,
+    government: `regarding the application/request "${hold.title}"`,
+    work: `regarding the work item "${hold.title}"`,
+    education: `regarding the academic record/request "${hold.title}"`,
+    personal: `regarding "${hold.title}"`
+  };
+
+  const context = contextMap[hold.category] || contextMap.personal;
+
+  // Subject Lines
+  const subjects: Record<FollowUpTone, string> = {
+    polite: `Follow-up: ${hold.title}`,
+    firm: `Action Required: ${hold.title} - ${daysWaiting} Days Overdue`,
+    escalation: `URGENT ESCALATION: ${hold.title} - Immediate Attention Required`
+  };
+
+  // Body Templates
   const templates: Record<FollowUpTone, string> = {
     polite: `Dear ${hold.counterparty} Team,
 
-I hope this message finds you well. I'm writing to follow up on my request regarding "${hold.title}".
+I hope this message finds you well. I'm writing to follow up ${context}.
 
-It has been ${daysWaiting} days since I initially submitted this request on ${formatDate(hold.startDate)}. I understand that these matters can take time, and I wanted to check on the current status.
+It has been ${daysWaiting} days since I initially submitted this request on ${dateStr}. I understand that these matters can take time, and I wanted to check on the current status.
 
 Could you please provide an update on when I might expect a resolution?
 
 Thank you for your time and assistance.
 
-Best regards`,
+Best regards,`,
 
     firm: `To Whom It May Concern at ${hold.counterparty},
 
-I am writing to request an update on "${hold.title}" which was submitted ${daysWaiting} days ago on ${formatDate(hold.startDate)}.
+I am writing to formally request an update on ${context}, which was submitted ${daysWaiting} days ago on ${dateStr}.
 
 The expected resolution timeframe of ${hold.expectedResolutionDays} days has ${getDaysRemaining(hold) < 0 ? 'passed' : 'not yet passed'}. I would appreciate a prompt response with a clear timeline for resolution.
 
 Please provide an update within 48 hours.
 
-Regards`,
+Regards,`,
 
     escalation: `URGENT: Escalation Request
-
 To: ${hold.counterparty} Management
+Reference: ${hold.title}
 
-Subject: Escalation - "${hold.title}"
-
-This matter was first raised ${daysWaiting} days ago on ${formatDate(hold.startDate)} and remains unresolved despite the expected resolution window of ${hold.expectedResolutionDays} days.
+This matter was first raised ${daysWaiting} days ago on ${dateStr} and remains unresolved.
 
 I am formally escalating this issue and request:
 1. Immediate acknowledgment of this escalation
@@ -153,10 +261,21 @@ If I do not receive a satisfactory response, I will be forced to explore additio
 
 This is my final attempt to resolve this matter directly.
 
-Regards`,
+Regards,`
   };
 
-  return templates[tone];
+  return {
+    subject: subjects[tone],
+    body: templates[tone]
+  };
+}
+
+/**
+ * Generate follow-up message string (Legacy warpper)
+ */
+export function generateFollowUpMessage(hold: Hold, tone: FollowUpTone): string {
+  const content = generateFollowUpContent(hold, tone);
+  return `Subject: ${content.subject}\n\n${content.body}`;
 }
 
 /**

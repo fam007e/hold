@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_ITERATIONS = 600000;
 const SALT_FIXED_PREFIX = "HOLD_APP_SECURE_SALT_v1_"; // Combined with UID for per-user salt
 
 export interface EncryptedData {
@@ -27,26 +27,46 @@ function ab2str(buf: ArrayBuffer): string {
   return new TextDecoder().decode(buf);
 }
 
+// Cross-platform crypto compatibility
+const crypto = globalThis.crypto;
+
+// Helper for Base64 (works in Browser and Node)
+function toBase64(buffer: ArrayBuffer): string {
+  if (typeof window !== 'undefined') {
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  } else {
+    return Buffer.from(buffer).toString('base64');
+  }
+}
+
+function fromBase64(base64: string): Uint8Array {
+  if (typeof window !== 'undefined') {
+    const binary_string = window.atob(base64);
+    const len = binary_string.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes;
+  } else {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
+  }
+}
+
 // Convert ArrayBuffer to Base64
 function ab2base64(buf: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
+  return toBase64(buf);
 }
 
 // Convert Base64 to ArrayBuffer
 function base642ab(base64: string): Uint8Array {
-  const binary_string = window.atob(base64);
-  const len = binary_string.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary_string.charCodeAt(i);
-  }
-  return bytes;
+  return fromBase64(base64);
 }
 
 /**
@@ -54,7 +74,7 @@ function base642ab(base64: string): Uint8Array {
  */
 export async function deriveKey(password: string, uid: string): Promise<CryptoKey> {
   const salt = str2ab(`${SALT_FIXED_PREFIX}${uid}`);
-  const keyMaterial = await window.crypto.subtle.importKey(
+  const keyMaterial = await crypto.subtle.importKey(
     "raw",
     str2ab(password) as any,
     { name: "PBKDF2" },
@@ -62,7 +82,7 @@ export async function deriveKey(password: string, uid: string): Promise<CryptoKe
     ["deriveKey"]
   );
 
-  return window.crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
       salt: salt as any,
@@ -82,7 +102,7 @@ export async function deriveKey(password: string, uid: string): Promise<CryptoKe
  */
 export async function deriveSigningKey(password: string, uid: string): Promise<CryptoKey> {
   const salt = str2ab(`${SALT_FIXED_PREFIX}${uid}_SIGNING`);
-  const keyMaterial = await window.crypto.subtle.importKey(
+  const keyMaterial = await crypto.subtle.importKey(
     "raw",
     str2ab(password) as any,
     { name: "PBKDF2" },
@@ -90,7 +110,7 @@ export async function deriveSigningKey(password: string, uid: string): Promise<C
     ["deriveKey"]
   );
 
-  return window.crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
       salt: salt as any,
@@ -116,9 +136,9 @@ export async function encryptValue(text: string, key: CryptoKey): Promise<Encryp
  * Encrypt a buffer (binary data)
  */
 export async function encryptBuffer(data: any, key: CryptoKey): Promise<EncryptedData> {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
 
-  const ciphertext = await window.crypto.subtle.encrypt(
+  const ciphertext = await crypto.subtle.encrypt(
     {
       name: "AES-GCM",
       iv: iv as any,
@@ -149,7 +169,7 @@ export async function decryptBuffer(data: EncryptedData, key: CryptoKey): Promis
     const ciphertext = base642ab(data.ciphertext);
     const iv = base642ab(data.iv);
 
-    const decrypted = await window.crypto.subtle.decrypt(
+    const decrypted = await crypto.subtle.decrypt(
       {
         name: "AES-GCM",
         iv: iv as any,
@@ -173,7 +193,7 @@ export async function signRecord(data: any, key: CryptoKey): Promise<string> {
   const canonicalString = JSON.stringify(data, Object.keys(data).sort());
   const encoded = str2ab(canonicalString);
 
-  const signature = await window.crypto.subtle.sign(
+  const signature = await crypto.subtle.sign(
     "HMAC",
     key,
     encoded as any
@@ -190,7 +210,7 @@ export async function verifyRecord(data: any, signature: string, key: CryptoKey)
   const encoded = str2ab(canonicalString);
   const signatureBytes = base642ab(signature);
 
-  return window.crypto.subtle.verify(
+  return crypto.subtle.verify(
     "HMAC",
     key,
     signatureBytes as any,

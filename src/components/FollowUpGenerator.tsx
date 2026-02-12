@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Copy, Check, Mail, Phone, Globe } from 'lucide-react';
+import { Copy, Check, Mail, Phone, Globe, ExternalLink } from 'lucide-react';
 import type { Hold, FollowUpTone } from '@/lib/types';
-import { generateFollowUpMessage } from '@/lib/utils';
+import { generateFollowUpContent } from '@/lib/utils';
 import './FollowUpGenerator.css';
 
 interface FollowUpGeneratorProps {
@@ -24,12 +24,19 @@ export function FollowUpGenerator({ hold }: FollowUpGeneratorProps) {
   const [selectedTone, setSelectedTone] = useState<FollowUpTone>('polite');
   const [copied, setCopied] = useState(false);
 
-  const message = generateFollowUpMessage(hold, selectedTone);
+  const content = generateFollowUpContent(hold, selectedTone);
+  const fullMessage = `Subject: ${content.subject}\n\n${content.body}`;
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(message);
+    await navigator.clipboard.writeText(fullMessage);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleEmail = () => {
+    const subject = encodeURIComponent(content.subject);
+    const body = encodeURIComponent(content.body);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -62,15 +69,26 @@ export function FollowUpGenerator({ hold }: FollowUpGeneratorProps) {
       <div className="follow-up__preview">
         <div className="follow-up__preview-header">
           <span>Message Preview</span>
-          <button
-            className="follow-up__copy"
-            onClick={handleCopy}
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              className="follow-up__copy"
+              onClick={handleEmail}
+              title="Open in default email app"
+              style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}
+            >
+              <ExternalLink size={14} />
+              Open Email
+            </button>
+            <button
+              className="follow-up__copy"
+              onClick={handleCopy}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
         </div>
-        <pre className="follow-up__message">{message}</pre>
+        <pre className="follow-up__message">{fullMessage}</pre>
       </div>
     </div>
   );
