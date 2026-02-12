@@ -51,4 +51,22 @@ coverage/
 
 # Misc
 *.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
 .cache/
+
+# Secrets & Infrastructure
+.env*
+!.env.example
+credentials*.json
+service-account*.json
+*.secret
+*.passwd
+*.bak
+*.sqlite
+/firebase-debug.log*
+/firestore-debug.log*
+/ui-debug.log*
