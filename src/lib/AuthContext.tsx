@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       const message = getErrorMessage(err.code);
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: err });
     }
   };
 
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       const message = getErrorMessage(err.code);
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: err });
     }
   };
 

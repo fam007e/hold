@@ -9,7 +9,9 @@ Thank you for your interest in contributing to HOLD! We want to make contributin
 
 ## Development Setup
 
-1. **Clone the repo**:
+1. **Node.js**: Ensure you are using a compatible Node.js version (`^20.19.0 || ^22.13.0 || >=24`).
+
+2. **Clone the repo**:
    ```bash
    git clone https://github.com/USER/hold.git
    cd hold
@@ -39,7 +41,7 @@ Thank you for your interest in contributing to HOLD! We want to make contributin
 ## Code Style
 
 - Use Prettier for formatting.
-- Follow TypeScript best practices.
+- Follow TypeScript best practices (Project targets ES2022).
 - Prefer functional components and hooks.
 - Keep CSS in component-specific files.
 

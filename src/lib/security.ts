@@ -181,7 +181,7 @@ export async function decryptBuffer(data: EncryptedData, key: CryptoKey): Promis
     return decrypted;
   } catch (e) {
     console.error("Decryption failed:", e);
-    throw new Error("Failed to decrypt data");
+    throw new Error("Failed to decrypt data", { cause: e });
   }
 }
 
