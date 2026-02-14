@@ -222,8 +222,10 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
   // Subscribe to holds for current user
   useEffect(() => {
     if (!user) {
-      setHolds([]);
-      setLoading(false);
+      Promise.resolve().then(() => {
+        setHolds([]);
+        setLoading(false);
+      });
       return;
     }
 
@@ -232,7 +234,9 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       // Let's fetch so the user sees *something* exists.
     }
 
-    setLoading(true);
+    Promise.resolve().then(() => {
+      setLoading(true);
+    });
 
     const q = query(
       collection(db, 'holds'),
