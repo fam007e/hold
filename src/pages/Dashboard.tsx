@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Clock, AlertTriangle, CheckCircle, ArrowUpCircle, Lock, Unlock, Download, Upload } from 'lucide-react';
-import { useHolds } from '@/lib/HoldsContext';
-import { useAuth } from '@/lib/AuthContext'; // Import useAuth
+import { useHolds } from '@/hooks/useHolds';
+import { useAuth } from '@/hooks/useAuth';
 import { HoldCard } from '@/components';
 import { calculateUrgency } from '@/lib/utils';
 import { downloadFile } from '@/lib/integrations';

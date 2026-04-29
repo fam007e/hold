@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Plus, LayoutDashboard, LogOut } from 'lucide-react';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import { HoldsProvider } from '@/lib/HoldsContext';
-import { NotificationProvider } from '@/lib/NotificationContext';
+import { AuthProvider } from '@/lib/AuthProvider';
+import { useAuth } from '@/hooks/useAuth';
+import { HoldsProvider } from '@/lib/HoldsProvider';
+import { NotificationProvider } from '@/lib/NotificationProvider';
 import { useOverdueCheck } from '@/hooks/useOverdueCheck';
 import { Dashboard, HoldDetail, NewHold, Login, Signup } from '@/pages';
 import './App.css';

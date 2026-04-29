@@ -17,12 +17,12 @@ import {
   FileText,
   Share2,
 } from 'lucide-react';
-import { useHolds } from '@/lib/HoldsContext';
+import { useHolds } from '@/hooks/useHolds';
 import { StatusBadge, Timeline, FollowUpGenerator } from '@/components';
 import { CATEGORY_INFO, type HoldCategory, type Attachment } from '@/lib/types';
 import { formatDate, getSuggestedStatus, calculateRiskScore, getRiskLevel, getBenchmark, getEscalationSteps } from '@/lib/utils';
 import { generateICal, downloadFile } from '@/lib/integrations';
-import { useAuth } from '@/lib/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { downloadAttachment } from '@/lib/storage';
 import { useState } from 'react';
 import './HoldDetail.css';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { UserPlus, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import './Auth.css';
 
 import { checkPwnedPassword } from '@/lib/pwned';

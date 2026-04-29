@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   collection,
   query,
@@ -12,24 +12,10 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import type { Hold, NewHold, HoldStatus } from './types';
 import { encryptValue, decryptValue, signRecord, verifyRecord, type EncryptedData } from './security';
-
-interface HoldsContextType {
-  holds: Hold[];
-  loading: boolean;
-  error: string | null;
-  addHold: (hold: NewHold) => Promise<Hold>;
-  updateHold: (id: string, updates: Partial<Hold>) => Promise<void>;
-  deleteHold: (id: string) => Promise<void>;
-  updateStatus: (id: string, status: HoldStatus) => Promise<void>;
-  resolveHold: (id: string, outcome: string, notes?: string) => Promise<void>;
-  getHold: (id: string) => Hold | undefined;
-  contributeToBenchmark: (hold: Hold) => Promise<void>;
-}
-
-const HoldsContext = createContext<HoldsContextType | undefined>(undefined);
+import { HoldsContext } from './contexts';
 
 // Helper to check if data is in encrypted format
 function isEncryptedData(data: any): data is EncryptedData {
@@ -104,7 +90,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
         if (isEncryptedData(data.notes)) notes = await decryptValue(data.notes, encryptionKey);
 
         // Decrypt Metadata
-        // Graceful fallback: if data is not encrypted (legacy), use as is.
         if (isEncryptedData(data.category)) category = await decryptValue(data.category, encryptionKey);
         if (isEncryptedData(data.status)) status = await decryptValue(data.status, encryptionKey);
 
@@ -120,11 +105,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
           const dateStr = await decryptValue(data.createdAt, encryptionKey);
           createdAt = new Date(dateStr);
         }
-        // We can leave updatedAt as server timestamp or encrypt it too.
-        // For consistency with "Zero Knowledge", let's assume we might encrypt it or just rely on server timestamp for sync.
-        // In the updateHold function we are now encrypting it? No, usually usually we leave updatedAt for sync.
-        // But strict Zero Knowledge might want to hide usage patterns.
-        // Let's stick to business logic fields for now.
       } catch (e) {
         console.error('Decryption error for hold ' + id, e);
       }
@@ -191,7 +171,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
         if (isEncryptedData(data.category)) category = 'personal'; // Default dummy
         if (isEncryptedData(data.status)) status = 'pending'; // Default dummy
         if (isEncryptedData(data.expectedResolutionDays)) expectedResolutionDays = 0; // Default dummy
-        // Keep dates as is (likely invalid/current date) or handle gracefully
       }
     }
 
@@ -229,11 +208,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isLocked) {
-      // If locked, we might choose not to fetch, or fetch but display locks.
-      // Let's fetch so the user sees *something* exists.
-    }
-
     Promise.resolve().then(() => {
       setLoading(true);
     });
@@ -241,7 +215,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
     const q = query(
       collection(db, 'holds'),
       where('userId', '==', user.uid)
-      // orderBy('createdAt', 'desc') // Removed for client-side sorting (encrypted metadata)
     );
 
     const unsubscribe = onSnapshot(
@@ -251,7 +224,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
           const holdsPromises = snapshot.docs.map(doc => docToHold(doc.id, doc.data()));
           const holdsData = await Promise.all(holdsPromises);
 
-          // Client-side sort
           holdsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
           setHolds(holdsData);
@@ -277,19 +249,16 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('Must be logged in');
     if (isLocked || !encryptionKey || !signingKey) throw new Error('Vault is locked. Cannot save encrypted data.');
 
-    // Encrypt sensitive fields
     const encryptedTitle = await encryptValue(newHold.title, encryptionKey);
     const encryptedCounterparty = await encryptValue(newHold.counterparty, encryptionKey);
     const encryptedNotes = newHold.notes ? await encryptValue(newHold.notes, encryptionKey) : null;
 
-    // Encrypt metadata
     const encryptedCategory = await encryptValue(newHold.category, encryptionKey);
     const encryptedStatus = await encryptValue('pending', encryptionKey);
     const encryptedStartDate = await encryptValue(new Date(newHold.startDate).toISOString(), encryptionKey);
     const encryptedExpectedDays = await encryptValue(String(newHold.expectedResolutionDays), encryptionKey);
     const encryptedCreatedAt = await encryptValue(new Date().toISOString(), encryptionKey);
 
-    // Encrypt attachment metadata
     const encryptedAttachments = await Promise.all((newHold.attachments || []).map(async (att) => {
       return {
         ...att,
@@ -299,7 +268,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       };
     }));
 
-    // Data to be signed (includes encrypted values)
     const dataToSign = getHoldSigningData({
       userId: user.uid,
       category: encryptedCategory,
@@ -321,9 +289,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
 
     const holdData = {
       ...dataToSign,
-      // createdAt: serverTimestamp(), // We store encrypted createdAt in dataToSign/baseData? No, dataToSign has it.
-      // Firestore needs a physical field for indexing? No, we index by userId only.
-      // But we probably want a server timestamp for sync backup.
       updatedAt: serverTimestamp(),
       _signature: signature,
       _encryptionVersion: 'v2-zk',
@@ -346,30 +311,24 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
   const updateHold = useCallback(async (id: string, updates: Partial<Hold>) => {
     if (!user || !encryptionKey || !signingKey) throw new Error('Vault locked');
 
-    // To maintain security entropy and integrity, we must re-sign the WHOLE record.
-    // This requires a Read-Modify-Write cycle.
     const hold = holds.find(h => h.id === id);
     if (!hold) throw new Error('Hold not found localy');
 
-    // 1. Prepare merged state (using decrypted local values)
     const merged = {
       ...hold,
       ...updates,
     };
 
-    // 2. Encrypt sensitive fields
     const encryptedTitle = await encryptValue(merged.title, encryptionKey);
     const encryptedCounterparty = await encryptValue(merged.counterparty, encryptionKey);
     const encryptedNotes = merged.notes ? await encryptValue(merged.notes, encryptionKey) : null;
 
-    // Encrypt metadata
     const encryptedCategory = await encryptValue(merged.category, encryptionKey);
     const encryptedStatus = await encryptValue(merged.status, encryptionKey);
     const encryptedStartDate = await encryptValue(new Date(merged.startDate).toISOString(), encryptionKey);
     const encryptedExpectedDays = await encryptValue(String(merged.expectedResolutionDays), encryptionKey);
     const encryptedCreatedAt = await encryptValue(new Date(merged.createdAt).toISOString(), encryptionKey);
 
-    // Encrypt attachment metadata
     const encryptedAttachments = await Promise.all((merged.attachments || []).map(async (att) => {
       return {
         ...att,
@@ -379,7 +338,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       };
     }));
 
-    // Encrypt resolution notes if present
     let encryptedResolution = null;
     if (merged.resolution) {
       encryptedResolution = {
@@ -389,7 +347,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    // Encrypt follow-ups
     const encryptedFollowUps = await Promise.all((merged.followUps || []).map(async (f) => {
       return {
         ...f,
@@ -397,7 +354,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       };
     }));
 
-    // 3. Reconstruct signed object structure
     const dataToSign = getHoldSigningData({
       userId: user.uid,
       category: encryptedCategory,
@@ -444,10 +400,6 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       (Date.now() - new Date(hold.startDate).getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Encrypt resolution notes if present
-    // Note: resolution object structure might need updates too
-    // For now, simplicity.
-
     await updateHold(id, {
       status: 'resolved',
       resolution: {
@@ -491,12 +443,4 @@ export function HoldsProvider({ children }: { children: React.ReactNode }) {
       {children}
     </HoldsContext.Provider>
   );
-}
-
-export function useHolds() {
-  const context = useContext(HoldsContext);
-  if (!context) {
-    throw new Error('useHolds must be used within a HoldsProvider');
-  }
-  return context;
 }

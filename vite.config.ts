@@ -12,12 +12,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-firebase-auth': ['firebase/auth'],
-          'vendor-firebase-db': ['firebase/firestore'],
-          'vendor-firebase-storage': ['firebase/storage'],
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-lucide': ['lucide-react'],
+        manualChunks(id) {
+          if (id.includes('firebase/auth')) return 'vendor-firebase-auth';
+          if (id.includes('firebase/firestore')) return 'vendor-firebase-db';
+          if (id.includes('firebase/storage')) return 'vendor-firebase-storage';
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            return 'vendor-react';
+          }
+          if (id.includes('lucide-react')) return 'vendor-lucide';
         },
       },
     },

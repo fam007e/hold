@@ -1,32 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  User,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   updateProfile,
+  User,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
-
+import { AuthContext } from './contexts';
 import { deriveKey, deriveSigningKey } from './security';
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  encryptionKey: CryptoKey | null;
-  signingKey: CryptoKey | null;
-  isLocked: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => Promise<void>;
-  unlock: (password: string) => Promise<void>;
-  clearError: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -101,9 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       // Re-authenticate to verify password is correct (optional but good practice)
-      // Actually, we just need to try deriving keys. But we should ideally verify against logic.
-      // Easiest is to re-login, which also refreshes token.
-      // But re-login requires email. user.email might be null?
       if (!user.email) throw new Error('User email missing');
 
       await signInWithEmailAndPassword(auth, user.email, password);
@@ -147,14 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }
 
 function getErrorMessage(code: string): string {

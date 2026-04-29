@@ -30,33 +30,24 @@ function ab2str(buf: ArrayBuffer): string {
 // Cross-platform crypto compatibility
 const crypto = globalThis.crypto;
 
-// Helper for Base64 (works in Browser and Node)
+// Helper for Base64 (works in Browser and Node 20+)
 function toBase64(buffer: ArrayBuffer): string {
-  if (typeof window !== 'undefined') {
-    let binary = "";
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-  } else {
-    return Buffer.from(buffer).toString('base64');
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
+  return globalThis.btoa(binary);
 }
 
 function fromBase64(base64: string): Uint8Array {
-  if (typeof window !== 'undefined') {
-    const binary_string = window.atob(base64);
-    const len = binary_string.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary_string.charCodeAt(i);
-    }
-    return bytes;
-  } else {
-    return new Uint8Array(Buffer.from(base64, 'base64'));
+  const binary_string = globalThis.atob(base64);
+  const len = binary_string.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary_string.charCodeAt(i);
   }
+  return bytes;
 }
 
 // Convert ArrayBuffer to Base64

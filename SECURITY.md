@@ -18,6 +18,6 @@ We take security seriously. If you discover a security vulnerability within this
 
 ## Security Practices
 
-- **Code Audits**: We welcome security researchers to audit our client-side cryptographic implementation in `src/lib/security.ts` and `src/lib/HoldsContext.tsx`.
+- **Code Audits**: We welcome security researchers to audit our client-side cryptographic implementation in `src/lib/security.ts` and `src/lib/HoldsProvider.tsx`.
 - **Dependency Management**: We use `npm audit` and stay up to date with security patches for our small set of critical dependencies.
 - **No Third-Party Analytics**: HOLD does not use third-party tracking or analytics that could leak your usage patterns.

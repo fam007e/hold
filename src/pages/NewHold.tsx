@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,8 +14,8 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
-import { useHolds } from '@/lib/HoldsContext';
-import { useAuth } from '@/lib/AuthContext';
+import { useHolds } from '@/hooks/useHolds';
+import { useAuth } from '@/hooks/useAuth';
 import { uploadAttachment } from '@/lib/storage';
 import { CATEGORY_INFO, type HoldCategory, type NewHold as NewHoldType, type Attachment } from '@/lib/types';
 import { EmailParser } from '@/components';
@@ -115,12 +115,12 @@ export function NewHold() {
     // Note: We leave the encrypted file in storage for now (orphaned) to keep client simple.
   };
 
-  // Auto-update expected days when category changes
-  useEffect(() => {
-    if (category && DEFAULT_RESOLUTION_DAYS[category]) {
-      setExpectedResolutionDays(DEFAULT_RESOLUTION_DAYS[category]);
+  const handleCategoryChange = (newCategory: HoldCategory) => {
+    setCategory(newCategory);
+    if (DEFAULT_RESOLUTION_DAYS[newCategory]) {
+      setExpectedResolutionDays(DEFAULT_RESOLUTION_DAYS[newCategory]);
     }
-  }, [category]);
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -149,7 +149,7 @@ export function NewHold() {
     if (data.title) setTitle(data.title);
     if (data.counterparty) setCounterparty(data.counterparty);
     if (data.date) setStartDate(data.date.toISOString().split('T')[0]);
-    if (data.category) setCategory(data.category);
+    if (data.category) handleCategoryChange(data.category);
     setShowEmailParser(false);
   };
 
@@ -235,7 +235,7 @@ export function NewHold() {
                   '--cat-color': cat.color,
                   '--cat-bg': `${cat.color}15`,
                 } as React.CSSProperties}
-                onClick={() => setCategory(cat.value)}
+                onClick={() => handleCategoryChange(cat.value)}
               >
                 {CATEGORY_ICONS[cat.value]}
                 <span>{cat.label}</span>

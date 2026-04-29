@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useHolds } from '@/lib/HoldsContext';
-import { useNotifications } from '@/lib/NotificationContext';
+import { useHolds } from './useHolds';
+import { useNotifications } from './useNotifications';
 import { shouldBeOverdue } from '@/lib/utils';
 import { differenceInDays } from 'date-fns';
 

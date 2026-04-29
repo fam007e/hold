@@ -5,7 +5,7 @@ Thank you for your interest in contributing to HOLD! We want to make contributin
 ## Security Warning
 
 > [!IMPORTANT]
-> Because HOLD is a Zero Knowledge application, any change to the cryptographic flow in `src/lib/security.ts` or `src/lib/HoldsContext.tsx` requires extreme scrutiny. Ensure you understand the Web Crypto API before proposing changes to these files.
+> Because HOLD is a Zero Knowledge application, any change to the cryptographic flow in `src/lib/security.ts` or `src/lib/HoldsProvider.tsx` requires extreme scrutiny. Ensure you understand the Web Crypto API before proposing changes to these files.
 
 ## Development Setup
 
